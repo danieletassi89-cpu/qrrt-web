@@ -3,231 +3,425 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>QR RT Web – prova</title>
+<title>QR RT</title>
+<meta name="description" content="Scansione e ristampa dei QR dei registratori telematici su BIXOLON SLP-TX220B.">
 <meta name="theme-color" content="#142348">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="QR RT">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" type="image/png" href="icon-180.png">
 <!-- Librerie ufficiali BIXOLON Web Print SDK, servite pubblicamente da bixolon.com -->
 <script src="https://bixolon.com/common/WebPrintSDK/js/bxlcommon.js"></script>
 <script src="https://bixolon.com/common/WebPrintSDK/js/bxllabel.js"></script>
-<!-- Decodifica QR lato pagina -->
+<!-- Lettura QR dalla fotocamera e anteprima del QR -->
 <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js"></script>
 <style>
-  :root { --navy:#142348; --coral:#EB5B53; --canvas:#F4F9FF; --ink:#282E37; --ok:#1E9669; --warn:#C77700; --err:#C62828; }
-  * { box-sizing:border-box; }
-  body { margin:0; font:16px/1.4 -apple-system, system-ui, sans-serif; background:var(--canvas); color:var(--ink); }
-  main { max-width:520px; margin:0 auto; padding:16px 16px 40px; }
-  h1 { margin:4px 0 2px; color:var(--navy); font-size:28px; }
-  .brand { color:var(--coral); font-weight:700; font-size:12px; letter-spacing:1.2px; }
-  .card { background:#fff; border-radius:16px; padding:14px; margin-top:14px; }
-  .row { display:flex; gap:8px; align-items:center; }
-  .row > * { flex:1; }
-  label { font-size:13px; color:#555; display:block; margin-bottom:4px; }
-  input, select { width:100%; font-size:16px; padding:10px; border:1px solid #d5dbe6; border-radius:10px; background:#fff; }
-  button { width:100%; font-size:17px; font-weight:600; padding:14px; border:0; border-radius:14px; color:#fff; background:var(--navy); margin-top:10px; }
-  button.print { background:var(--coral); }
-  button.ghost { background:#e9eef7; color:var(--navy); }
-  button:disabled { opacity:.45; }
-  #video { width:100%; border-radius:12px; background:#000; display:none; margin-top:10px; }
-  #payload { font-family:ui-monospace, Menlo, monospace; font-size:13px; white-space:pre-wrap; word-break:break-all; background:#f3f5f9; border-radius:10px; padding:10px; min-height:44px; }
-  .status { padding:10px 12px; border-radius:12px; font-weight:600; font-size:14px; margin-top:10px; }
-  .s-info { background:#e8eefb; color:var(--navy); }
-  .s-ok { background:#e3f5ee; color:var(--ok); }
-  .s-warn { background:#fdf1dc; color:var(--warn); }
-  .s-err { background:#fbe5e5; color:var(--err); }
-  details { margin-top:14px; }
-  summary { font-weight:600; color:var(--navy); }
-  pre { font-size:12px; white-space:pre-wrap; word-break:break-all; background:#f3f5f9; border-radius:10px; padding:10px; }
-  .muted { color:#777; font-size:13px; }
+  :root { --navy:#142348; --coral:#EB5B53; --canvas:#F4F9FF; --ink:#282E37; --ok:#1E9669; --warn:#C77700; --err:#C62828; --muted:#6b7280; }
+  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html, body { margin:0; background:var(--canvas); color:var(--ink); font:16px/1.4 -apple-system, system-ui, "Segoe UI", sans-serif; }
+  main { max-width:520px; margin:0 auto; padding:calc(14px + env(safe-area-inset-top)) 18px calc(28px + env(safe-area-inset-bottom)); }
+  header { display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; }
+  .brand { color:var(--coral); font-weight:800; font-size:13px; letter-spacing:1.2px; }
+  h1 { margin:0; font-size:30px; color:var(--navy); font-weight:800; letter-spacing:-.3px; }
+  .iconbtn { width:46px; height:46px; border-radius:15px; border:0; background:#fff; color:var(--navy); display:grid; place-items:center; }
+  .iconbtn svg { width:22px; height:22px; }
+  .card { background:#fff; border-radius:18px; padding:16px; margin-top:14px; }
+  .status { display:flex; align-items:center; gap:12px; }
+  .dot { width:12px; height:12px; border-radius:50%; background:var(--muted); flex:none; }
+  .status b { display:block; font-size:15px; }
+  .status small { color:var(--muted); font-size:13px; }
+  .status .grow { flex:1; min-width:0; }
+  .pill { border:0; border-radius:999px; padding:8px 14px; font-weight:700; font-size:13px; background:#e9eef7; color:var(--navy); }
+  .banner { margin-top:14px; padding:12px 14px; border-radius:14px; font-weight:600; font-size:14px; display:none; }
+  .banner.progress { display:block; background:#e8eefb; color:var(--navy); }
+  .banner.success { display:block; background:#e3f5ee; color:var(--ok); }
+  .banner.error { display:block; background:#fbe5e5; color:var(--err); }
+  .qrbox { height:215px; border-radius:18px; background:#fff; display:grid; place-items:center; text-align:center; color:#555; }
+  .qrbox svg.empty { width:62px; height:62px; color:var(--navy); opacity:.75; }
+  #qrPreview { width:170px; height:170px; image-rendering:pixelated; }
+  .big { width:100%; border:0; border-radius:15px; padding:16px; font-size:17px; font-weight:700; color:#fff; background:var(--navy); margin-top:12px; display:flex; align-items:center; justify-content:center; gap:10px; }
+  .big.print { background:var(--coral); padding:18px; border-radius:17px; }
+  .big:disabled { background:#b9bec8; }
+  .link { background:none; border:0; color:var(--navy); font-weight:600; font-size:14px; padding:10px; }
+  .link.danger { color:var(--err); }
+  .row { display:flex; justify-content:center; gap:6px; }
+  .payload { font-family:ui-monospace, Menlo, monospace; font-size:12px; color:#444; word-break:break-all; background:#f3f5f9; border-radius:10px; padding:8px 10px; margin-top:10px; max-height:78px; overflow:auto; display:none; }
+  .copies { display:flex; align-items:center; gap:10px; }
+  .copies .grow { flex:1; }
+  .copies b { display:block; }
+  .copies small { color:var(--muted); font-size:12px; }
+  .step { display:flex; border-radius:10px; overflow:hidden; background:#eef1f6; }
+  .step button { border:0; background:transparent; width:44px; height:36px; font-size:22px; color:var(--navy); }
+  .step button:disabled { opacity:.35; }
+  .num { width:30px; text-align:center; font-weight:800; font-size:20px; color:var(--navy); font-variant-numeric:tabular-nums; }
+  .note { text-align:center; color:var(--muted); font-size:12px; margin-top:16px; }
+  /* Scanner a tutto schermo */
+  #scanner { position:fixed; inset:0; background:#000; display:none; z-index:20; }
+  #scanner video { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; }
+  #scanner .frame { position:absolute; left:50%; top:45%; width:68vw; max-width:320px; aspect-ratio:1; transform:translate(-50%,-50%); border:3px solid rgba(255,255,255,.9); border-radius:22px; box-shadow:0 0 0 100vmax rgba(0,0,0,.35); }
+  #scanner .hint { position:absolute; left:50%; bottom:calc(40px + env(safe-area-inset-bottom)); transform:translateX(-50%); background:rgba(0,0,0,.65); color:#fff; font-weight:600; padding:12px 18px; border-radius:999px; white-space:nowrap; }
+  #scanner .close { position:absolute; left:16px; top:calc(14px + env(safe-area-inset-top)); background:rgba(0,0,0,.55); color:#fff; border:0; border-radius:999px; padding:10px 16px; font-weight:700; font-size:15px; }
+  /* Impostazioni */
+  #settings { position:fixed; inset:0; background:var(--canvas); display:none; z-index:10; overflow:auto; }
+  #settings main { padding-top:calc(10px + env(safe-area-inset-top)); }
+  .sethead { display:flex; justify-content:space-between; align-items:center; }
+  .sethead h2 { margin:0; font-size:22px; color:var(--navy); }
+  .group { background:#fff; border-radius:16px; margin-top:14px; overflow:hidden; }
+  .group h3 { margin:0; padding:12px 16px 4px; font-size:12px; letter-spacing:.6px; text-transform:uppercase; color:var(--muted); }
+  .field { display:flex; align-items:center; justify-content:space-between; gap:10px; padding:12px 16px; border-top:1px solid #eef1f6; }
+  .field:first-of-type { border-top:0; }
+  .field label { font-size:15px; }
+  .field small { display:block; color:var(--muted); font-size:12px; }
+  .field input, .field select { font-size:16px; padding:8px 10px; border:1px solid #d5dbe6; border-radius:10px; background:#fff; max-width:52%; }
+  .foot { color:var(--muted); font-size:12px; padding:8px 16px 14px; }
 </style>
 </head>
 <body>
-<main>
-  <div class="brand">TASSIUFFICIO</div>
-  <h1>QR RT · prova web</h1>
-  <div class="muted">Pagina di prova per la stampa tramite l'app BIXOLON Web Print SDK.</div>
+<main id="home">
+  <header>
+    <div>
+      <div class="brand">TASSIUFFICIO</div>
+      <h1>QR RT</h1>
+    </div>
+    <button class="iconbtn" id="btnSettings" aria-label="Impostazioni">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3h0a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8v0a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
+    </button>
+  </header>
+
+  <div class="card status">
+    <span class="dot" id="pDot"></span>
+    <div class="grow"><b id="pTitle">Stampante</b><small id="pSub">Verifica in corso…</small></div>
+    <button class="pill" id="btnCheck">Verifica</button>
+  </div>
+
+  <div class="banner" id="banner"></div>
 
   <div class="card">
-    <div class="row">
-      <div><label for="pname">Nome logico stampante</label><input id="pname" value="QRRT" autocapitalize="off" autocorrect="off"></div>
-      <div><label for="mode">Collegamento all'app</label>
-        <select id="mode"><option value="http:">HTTP</option><option value="https:">HTTPS</option><option value="ws:">WS</option><option value="wss:">WSS</option></select>
+    <div class="qrbox" id="qrBox">
+      <div id="qrEmpty">
+        <svg class="empty" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2"/><rect x="7" y="7" width="4" height="4" rx=".5"/><rect x="13" y="7" width="4" height="4" rx=".5"/><rect x="7" y="13" width="4" height="4" rx=".5"/><path d="M13 13h1v1M16 16h1v1M13 16h1"/></svg>
+        <div style="margin-top:10px;font-weight:500">Inquadra il QR del registratore</div>
       </div>
+      <canvas id="qrPreview" hidden></canvas>
     </div>
-    <button class="ghost" id="btnCheck">1 · Verifica collegamento stampante</button>
-    <div id="checkStatus" class="status s-info">Non ancora verificato</div>
-  </div>
-
-  <div class="card">
-    <button id="btnScan">2 · Scansiona QR con la fotocamera</button>
-    <video id="video" playsinline muted></video>
-    <label style="margin-top:10px">Oppure scegli una foto del QR</label>
-    <input type="file" id="photo" accept="image/*">
-    <label style="margin-top:10px" for="manual">Oppure incolla il contenuto</label>
-    <input id="manual" placeholder="contenuto del QR">
-    <label style="margin-top:10px">Contenuto acquisito (esatto)</label>
-    <div id="payload">—</div>
-    <div class="muted" id="payloadInfo"></div>
-    <div id="scanStatus" class="status s-info" style="display:none"></div>
-  </div>
-
-  <div class="card">
+    <div class="payload" id="payload"></div>
+    <button class="big" id="btnScan">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2"/><circle cx="12" cy="12" r="3.5"/></svg>
+      <span id="scanLabel">Scansiona QR</span>
+    </button>
     <div class="row">
-      <div><label for="x">Orizzontale (punti)</label><input id="x" type="number" value="115" inputmode="numeric"></div>
-      <div><label for="y">Verticale (punti)</label><input id="y" type="number" value="35" inputmode="numeric"></div>
-      <div><label for="size">Dimensione</label><input id="size" type="number" value="5" min="1" max="9" inputmode="numeric"></div>
+      <button class="link" id="btnPhoto">Da una foto</button>
+      <button class="link danger" id="btnClear" hidden>Rimuovi QR</button>
     </div>
-    <div class="muted">8 punti = 1 mm. Valori collaudati nell'app iPhone: 115 / 35 / 5, QR Modello 2, correzione L.</div>
-    <button class="print" id="btnPrint" disabled>3 · Stampa 1 etichetta</button>
-    <div id="printStatus" class="status s-info" style="display:none"></div>
+    <input type="file" id="photo" accept="image/*" hidden>
   </div>
 
-  <details>
-    <summary>Diagnostica</summary>
-    <pre id="diag"></pre>
-  </details>
+  <div class="card copies">
+    <div class="grow"><b>Numero di copie</b><small>Etichette da stampare</small></div>
+    <div class="step"><button id="minus" aria-label="Meno">−</button><button id="plus" aria-label="Più">+</button></div>
+    <div class="num" id="copies">1</div>
+  </div>
+
+  <button class="big print" id="btnPrint" disabled>
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M7 3h10v4H7zM5 8h14a3 3 0 0 1 3 3v6h-4v4H6v-4H2v-6a3 3 0 0 1 3-3zm3 7v4h8v-4z"/></svg>
+    <span id="printLabel">STAMPA ETICHETTA</span>
+  </button>
+
+  <div class="note">Il QR resta salvato solo su questo iPhone · per stampare usa l'app BIXOLON Web Print SDK</div>
 </main>
+
+<section id="scanner" aria-label="Scansione QR">
+  <video id="video" playsinline muted></video>
+  <div class="frame"></div>
+  <button class="close" id="btnScanClose">Annulla</button>
+  <div class="hint">Inquadra interamente il QR</div>
+</section>
+
+<section id="settings" aria-label="Impostazioni">
+  <main>
+    <div class="sethead"><h2>Impostazioni</h2><button class="pill" id="btnSettingsDone">Fine</button></div>
+
+    <div class="group">
+      <h3>Stampante</h3>
+      <div class="field"><label>Modello</label><span>BIXOLON SLP-TX220B</span></div>
+      <div class="field"><label>Etichetta</label><span>35 × 70 mm</span></div>
+      <div class="field"><label for="sPname">Nome logico<small>come registrato in Web Print SDK</small></label><input id="sPname" autocapitalize="off" autocorrect="off"></div>
+      <div class="field"><label for="sMode">Collegamento</label>
+        <select id="sMode"><option value="https:">HTTPS (con certificato)</option><option value="http:">HTTP</option><option value="wss:">WSS</option><option value="ws:">WS</option></select></div>
+    </div>
+
+    <div class="group">
+      <h3>Posizione e dimensione</h3>
+      <div class="field"><label>Orizzontale<small id="xmm"></small></label><div class="step"><button data-k="x" data-d="-8">−</button><div class="num" id="xv" style="width:52px;font-size:17px"></div><button data-k="x" data-d="8">+</button></div></div>
+      <div class="field"><label>Verticale<small id="ymm"></small></label><div class="step"><button data-k="y" data-d="-8">−</button><div class="num" id="yv" style="width:52px;font-size:17px"></div><button data-k="y" data-d="8">+</button></div></div>
+      <div class="field"><label>Dimensione QR</label><div class="step"><button data-k="size" data-d="-1">−</button><div class="num" id="sizev" style="width:52px;font-size:17px"></div><button data-k="size" data-d="1">+</button></div></div>
+      <div class="field"><label for="sRot">Rotazione</label><select id="sRot"><option value="0">0°</option><option value="1">90°</option><option value="2">180°</option><option value="3">270°</option></select></div>
+      <div class="foot">Ogni tocco sposta il QR di 1 mm (8 punti a 203 dpi).</div>
+    </div>
+
+    <div class="group">
+      <h3>Codifica QR</h3>
+      <div class="field"><label for="sModel">Modello</label><select id="sModel"><option value="1">Modello 2</option><option value="0">Modello 1</option></select></div>
+      <div class="field"><label for="sEcc">Correzione errori</label><select id="sEcc"><option value="L">L · 7%</option><option value="M">M · 15%</option><option value="Q">Q · 25%</option><option value="H">H · 30%</option></select></div>
+    </div>
+
+    <div class="group">
+      <div class="field"><button class="link danger" id="btnDefaults" style="padding:0">Ripristina parametri originali</button></div>
+      <div class="foot">Valori collaudati: orizzontale 115, verticale 35, dimensione 5, Modello 2, correzione L. Modificare solo durante il collaudo dell'etichetta reale.</div>
+    </div>
+  </main>
+</section>
 
 <script>
 (function () {
+  "use strict";
   var $ = function (id) { return document.getElementById(id); };
-  var payload = "";
-  var issueID = 1;
+
+  // ---------- Archivio locale (solo su questo dispositivo) ----------
+  function load(key, fallback) { try { var v = localStorage.getItem(key); return v === null ? fallback : JSON.parse(v); } catch (e) { return fallback; } }
+  function save(key, value) { try { localStorage.setItem(key, JSON.stringify(value)); } catch (e) {} }
+
+  var DEFAULTS = { pname: "QRRT", mode: "https:", x: 115, y: 35, size: 5, rot: 0, model: 1, ecc: "L" };
+  var LIMITS = { x: [0, 800], y: [0, 800], size: [1, 9] };
+  var S = Object.assign({}, DEFAULTS, load("qrrt.settings.v1", {}));
+  var payload = load("qrrt.lastPayload", "");
+  var copies = 1;
+  var printing = false;
+  var printerOk = false;
+
+  // ---------- Messaggi ----------
+  var bannerTimer = null;
+  function banner(style, text, sticky) {
+    var b = $("banner");
+    b.className = "banner " + style; b.textContent = text;
+    clearTimeout(bannerTimer);
+    if (!sticky && style === "success") bannerTimer = setTimeout(function () { b.className = "banner"; }, 6000);
+  }
+
+  function setPrinter(state, sub) {
+    var dot = $("pDot"), t = $("pTitle");
+    var map = {
+      checking: ["#9aa3b2", "Verifica stampante…"],
+      ok: ["var(--ok)", "Stampante pronta"],
+      noapp: ["var(--err)", "App BIXOLON non raggiungibile"],
+      noprinter: ["var(--warn)", "Stampante \"" + S.pname + "\" non trovata"],
+      warn: ["var(--warn)", "Stampante: attenzione"]
+    }[state];
+    dot.style.background = map[0]; t.textContent = map[1]; $("pSub").textContent = sub || "";
+    printerOk = state === "ok";
+  }
+
+  // ---------- Invio alla app BIXOLON Web Print SDK ----------
+  function sendJob(build) {
+    return new Promise(function (resolve) {
+      if (typeof requestPrint !== "function") { resolve("Librerie BIXOLON non caricate"); return; }
+      setConnectionMode(S.mode);
+      setLabelId(Date.now() % 1000000000);
+      build();
+      var data = getLabelData();
+      var done = false;
+      var timer = setTimeout(function () { if (!done) { done = true; resolve("Nessuna risposta (timeout)"); } }, 30000);
+      requestPrint(S.pname, data, function (result) {
+        if (done || !result) return; // la prima chiamata è sempre vuota
+        done = true; clearTimeout(timer); resolve(String(result));
+      });
+    });
+  }
+  function isSuccess(r) { return /:success$/i.test(r) || /^success$/i.test(r); }
+  function explain(r) {
+    if (/Cannot connect/i.test(r)) return "App BIXOLON Web Print SDK non raggiungibile: apri questa pagina dall'app, con collegamento HTTPS e certificato attivo.";
+    if (/No printers/i.test(r)) return "Nessuna stampante \"" + S.pname + "\" nell'app Web Print SDK: controlla il nome logico nelle impostazioni.";
+    if (/timeout/i.test(r)) return "La stampante non ha risposto: è accesa e collegata?";
+    if (/non caricate/i.test(r)) return "Serve la connessione internet per caricare le librerie BIXOLON.";
+    return "Risposta della stampante: " + r.replace(/^\d+:/, "");
+  }
+
+  function checkPrinter() {
+    setPrinter("checking", "Bluetooth · " + S.pname);
+    return sendJob(function () { checkLabelStatus(); }).then(function (r) {
+      if (isSuccess(r)) setPrinter("ok", "SLP-TX220B · " + S.pname);
+      else if (/Cannot connect|non caricate/i.test(r)) setPrinter("noapp", "Apri la pagina dall'app Web Print SDK");
+      else if (/No printers/i.test(r)) setPrinter("noprinter", "Controlla il nome logico nelle impostazioni");
+      else setPrinter("warn", explain(r));
+      return r;
+    });
+  }
+
+  // ---------- QR corrente ----------
+  function renderPayload() {
+    var has = payload && payload.trim().length > 0;
+    $("qrEmpty").hidden = has; $("qrPreview").hidden = !has;
+    $("btnClear").hidden = !has;
+    $("payload").style.display = has ? "block" : "none";
+    $("payload").textContent = has ? payload : "";
+    $("scanLabel").textContent = has ? "Scansiona un altro QR" : "Scansiona QR";
+    if (has) drawPreview(payload);
+    updateButtons();
+  }
+
+  function drawPreview(text) {
+    var c = $("qrPreview"), ctx = c.getContext("2d");
+    try {
+      qrcode.stringToBytes = qrcode.stringToBytesFuncs["UTF-8"];
+      var q = qrcode(0, S.ecc); q.addData(text, "Byte"); q.make();
+      var n = q.getModuleCount(), scale = Math.max(2, Math.floor(340 / (n + 8))), size = (n + 8) * scale;
+      c.width = c.height = size;
+      ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, size, size); ctx.fillStyle = "#000";
+      for (var r = 0; r < n; r++) for (var k = 0; k < n; k++) if (q.isDark(r, k)) ctx.fillRect((k + 4) * scale, (r + 4) * scale, scale, scale);
+    } catch (e) {
+      c.width = c.height = 10; ctx.clearRect(0, 0, 10, 10);
+    }
+  }
+
+  function accept(text) {
+    if (!text || !text.trim()) return;
+    payload = text; // conservato esattamente, senza modifiche
+    save("qrrt.lastPayload", payload);
+    renderPayload();
+    banner("success", "QR acquisito correttamente");
+    if (navigator.vibrate) navigator.vibrate(60);
+  }
+
+  function updateButtons() {
+    var has = payload && payload.trim().length > 0;
+    $("btnPrint").disabled = !has || printing;
+    $("printLabel").textContent = printing ? "STAMPA IN CORSO…" : "STAMPA ETICHETTA";
+    $("minus").disabled = copies <= 1 || printing;
+    $("plus").disabled = copies >= 5 || printing;
+    $("copies").textContent = copies;
+    ["btnScan", "btnPhoto", "btnClear", "btnSettings", "btnCheck"].forEach(function (id) { $(id).disabled = printing; });
+  }
+
+  // ---------- Scanner ----------
   var stream = null, scanning = false;
   var canvas = document.createElement("canvas");
-  var ctx = canvas.getContext("2d", { willReadFrequently: true });
+  var cctx = canvas.getContext("2d", { willReadFrequently: true });
 
-  function setStatus(el, cls, text) { el.style.display = "block"; el.className = "status " + cls; el.textContent = text; }
-  function log(line) { $("diag").textContent += line + "\n"; }
-
-  // Preferenze locali (solo comodità su questo dispositivo)
-  try {
-    ["pname", "mode", "x", "y", "size"].forEach(function (k) {
-      var v = localStorage.getItem("qrrt." + k); if (v !== null) $(k).value = v;
-      $(k).addEventListener("change", function () { try { localStorage.setItem("qrrt." + k, $(k).value); } catch (e) {} });
-    });
-  } catch (e) {}
-
-  log("User agent: " + navigator.userAgent);
-  log("Contesto sicuro: " + window.isSecureContext);
-  log("getUserMedia: " + !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia));
-  log("Librerie BIXOLON: " + (typeof requestPrint === "function" && typeof drawQRCode === "function" ? "caricate" : "NON caricate"));
-  log("jsQR: " + (typeof jsQR === "function" ? "caricato" : "NON caricato"));
-
-  function applyMode() { if (typeof setConnectionMode === "function") setConnectionMode($("mode").value); }
-
-  function describe(result) {
-    if (!result) return null;
-    if (/success/i.test(result)) return ["s-ok", "Stampante raggiunta: risposta \"" + result + "\""];
-    if (/Cannot connect/i.test(result)) return ["s-err", "L'app Web Print SDK non risponde. È aperta? Modalità di collegamento corretta?"];
-    if (/No printers/i.test(result)) return ["s-err", "Nessuna stampante con questo nome logico nell'app Web Print SDK."];
-    return ["s-warn", "Risposta: \"" + result + "\""];
-  }
-
-  function send(el, buildFn, label) {
-    if (typeof requestPrint !== "function") { setStatus(el, "s-err", "Librerie BIXOLON non caricate: serve connessione internet."); return; }
-    applyMode();
-    setLabelId(issueID++);
-    buildFn();
-    var data = getLabelData();
-    log(label + " → " + data);
-    setStatus(el, "s-info", "Invio in corso…");
-    requestPrint($("pname").value.trim(), data, function (result) {
-      log(label + " ← " + JSON.stringify(result));
-      var d = describe(result);
-      if (d) setStatus(el, d[0], d[1]);
-    });
-  }
-
-  $("btnCheck").onclick = function () {
-    // Solo controllo stato: nessuna etichetta viene stampata.
-    send($("checkStatus"), function () { checkLabelStatus(); }, "Verifica");
-  };
-
-  function accept(text, source) {
-    if (!text || !text.trim()) return;
-    payload = text; // conservato esattamente, senza trim
-    $("payload").textContent = payload;
-    $("payloadInfo").textContent = payload.length + " caratteri · fonte: " + source;
-    $("btnPrint").disabled = false;
-    setStatus($("scanStatus"), "s-ok", "QR acquisito");
-  }
-
-  function decode(imageSource, w, h) {
+  function decode(src, w, h) {
     canvas.width = w; canvas.height = h;
-    ctx.drawImage(imageSource, 0, 0, w, h);
-    var img = ctx.getImageData(0, 0, w, h);
-    var code = jsQR(img.data, w, h, { inversionAttempts: "attemptBoth" });
-    if (!code) return null;
-    // Se i byte non sono UTF-8 valido jsQR li restituisce comunque in binaryData.
-    return code.data;
+    cctx.drawImage(src, 0, 0, w, h);
+    var code = jsQR(cctx.getImageData(0, 0, w, h).data, w, h, { inversionAttempts: "attemptBoth" });
+    return code ? code.data : null;
   }
 
-  function stopScan() {
+  function openScanner() {
+    if (typeof jsQR !== "function") { banner("error", "Lettore QR non caricato: serve la connessione internet."); return; }
+    if (!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia)) { banner("error", "Fotocamera non disponibile qui: usa \"Da una foto\"."); return; }
+    navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" }, audio: false }).then(function (s) {
+      stream = s; scanning = true;
+      var v = $("video"); v.srcObject = s; v.play();
+      $("scanner").style.display = "block";
+      requestAnimationFrame(tick);
+    }).catch(function (e) {
+      banner("error", "Fotocamera non consentita (" + e.name + "): usa \"Da una foto\".");
+    });
+  }
+  function closeScanner() {
     scanning = false;
     if (stream) { stream.getTracks().forEach(function (t) { t.stop(); }); stream = null; }
-    $("video").style.display = "none";
-    $("btnScan").textContent = "2 · Scansiona QR con la fotocamera";
+    $("scanner").style.display = "none";
   }
-
   function tick() {
     if (!scanning) return;
     var v = $("video");
     if (v.readyState === v.HAVE_ENOUGH_DATA && v.videoWidth) {
-      var scale = Math.min(1, 800 / v.videoWidth);
-      var text = decode(v, Math.round(v.videoWidth * scale), Math.round(v.videoHeight * scale));
-      if (text) { accept(text, "fotocamera"); stopScan(); if (navigator.vibrate) navigator.vibrate(80); return; }
+      var sc = Math.min(1, 800 / v.videoWidth);
+      var text = decode(v, Math.round(v.videoWidth * sc), Math.round(v.videoHeight * sc));
+      if (text) { closeScanner(); accept(text); return; }
     }
     requestAnimationFrame(tick);
   }
 
-  $("btnScan").onclick = function () {
-    if (scanning) { stopScan(); return; }
-    if (typeof jsQR !== "function") { setStatus($("scanStatus"), "s-err", "Decodificatore QR non caricato: serve connessione internet."); return; }
-    if (!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia)) {
-      setStatus($("scanStatus"), "s-warn", "Fotocamera non disponibile in questa app: usa \"scegli una foto\".");
-      return;
-    }
-    navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" }, audio: false })
-      .then(function (s) {
-        stream = s; scanning = true;
-        var v = $("video"); v.srcObject = s; v.style.display = "block"; v.play();
-        $("btnScan").textContent = "Annulla scansione";
-        setStatus($("scanStatus"), "s-info", "Inquadra interamente il QR");
-        requestAnimationFrame(tick);
-      })
-      .catch(function (e) {
-        log("getUserMedia errore: " + e.name + " " + e.message);
-        setStatus($("scanStatus"), "s-warn", "Fotocamera non consentita qui (" + e.name + "): usa \"scegli una foto\".");
+  // ---------- Stampa ----------
+  function printCurrent() {
+    if (!payload || printing) return;
+    printing = true; updateButtons();
+    banner("progress", copies > 1 ? "Stampa di " + copies + " etichette…" : "Invio alla stampante…", true);
+    var done = 0;
+    function next() {
+      if (done >= copies) {
+        printing = false; updateButtons();
+        setPrinter("ok", "SLP-TX220B · " + S.pname);
+        banner("success", (copies > 1 ? copies + " etichette inviate" : "Etichetta inviata") + ": verifica la stampa");
+        return;
+      }
+      sendJob(function () {
+        checkLabelStatus();
+        clearBuffer();
+        drawQRCode(payload, S.x, S.y, S.model, S.ecc, S.size, S.rot);
+        printBuffer();
+      }).then(function (r) {
+        if (isSuccess(r)) { done++; next(); return; }
+        printing = false; updateButtons();
+        banner("error", (done ? done + " di " + copies + " stampate. " : "") + explain(r), true);
+        checkPrinter();
       });
-  };
+    }
+    next();
+  }
 
-  $("photo").onchange = function (ev) {
+  // ---------- Impostazioni ----------
+  function mm(d) { return (d / 8).toFixed(1).replace(".", ",") + " mm"; }
+  function renderSettings() {
+    $("sPname").value = S.pname; $("sMode").value = S.mode;
+    $("xv").textContent = S.x; $("yv").textContent = S.y; $("sizev").textContent = S.size;
+    $("xmm").textContent = mm(S.x); $("ymm").textContent = mm(S.y);
+    $("sRot").value = String(S.rot); $("sModel").value = String(S.model); $("sEcc").value = S.ecc;
+  }
+  function persist() { save("qrrt.settings.v1", S); renderSettings(); if (payload) drawPreview(payload); }
+
+  document.querySelectorAll("[data-k]").forEach(function (b) {
+    b.addEventListener("click", function () {
+      var k = b.getAttribute("data-k"), d = parseInt(b.getAttribute("data-d"), 10);
+      S[k] = Math.min(LIMITS[k][1], Math.max(LIMITS[k][0], S[k] + d)); persist();
+    });
+  });
+  $("sPname").addEventListener("change", function () { S.pname = $("sPname").value.trim() || DEFAULTS.pname; persist(); });
+  $("sMode").addEventListener("change", function () { S.mode = $("sMode").value; persist(); });
+  $("sRot").addEventListener("change", function () { S.rot = parseInt($("sRot").value, 10); persist(); });
+  $("sModel").addEventListener("change", function () { S.model = parseInt($("sModel").value, 10); persist(); });
+  $("sEcc").addEventListener("change", function () { S.ecc = $("sEcc").value; persist(); });
+  $("btnDefaults").addEventListener("click", function () { S = Object.assign({}, DEFAULTS); persist(); });
+  $("btnSettings").addEventListener("click", function () { renderSettings(); $("settings").style.display = "block"; });
+  $("btnSettingsDone").addEventListener("click", function () { $("settings").style.display = "none"; checkPrinter(); });
+
+  // ---------- Pulsanti principali ----------
+  $("btnScan").addEventListener("click", openScanner);
+  $("btnScanClose").addEventListener("click", closeScanner);
+  $("btnPhoto").addEventListener("click", function () { $("photo").click(); });
+  $("photo").addEventListener("change", function (ev) {
     var f = ev.target.files && ev.target.files[0]; if (!f) return;
     var img = new Image();
     img.onload = function () {
-      var scale = Math.min(1, 1600 / Math.max(img.width, img.height));
-      var text = decode(img, Math.round(img.width * scale), Math.round(img.height * scale));
-      URL.revokeObjectURL(img.src);
-      if (text) accept(text, "foto"); else setStatus($("scanStatus"), "s-warn", "Nessun QR riconosciuto nella foto.");
+      var sc = Math.min(1, 1600 / Math.max(img.width, img.height));
+      var text = typeof jsQR === "function" ? decode(img, Math.round(img.width * sc), Math.round(img.height * sc)) : null;
+      URL.revokeObjectURL(img.src); ev.target.value = "";
+      if (text) accept(text); else banner("error", "Nessun QR riconosciuto nella foto.");
     };
     img.src = URL.createObjectURL(f);
-  };
+  });
+  $("btnClear").addEventListener("click", function () { payload = ""; save("qrrt.lastPayload", ""); renderPayload(); $("banner").className = "banner"; });
+  $("minus").addEventListener("click", function () { copies = Math.max(1, copies - 1); updateButtons(); });
+  $("plus").addEventListener("click", function () { copies = Math.min(5, copies + 1); updateButtons(); });
+  $("btnPrint").addEventListener("click", printCurrent);
+  $("btnCheck").addEventListener("click", checkPrinter);
 
-  $("manual").onchange = function () { accept($("manual").value, "testo"); };
+  document.addEventListener("visibilitychange", function () {
+    if (document.visibilityState === "visible" && !printing) checkPrinter();
+    if (document.visibilityState === "hidden") closeScanner();
+  });
 
-  $("btnPrint").onclick = function () {
-    if (!payload) return;
-    var x = parseInt($("x").value, 10), y = parseInt($("y").value, 10), size = parseInt($("size").value, 10);
-    if ([x, y, size].some(isNaN)) { setStatus($("printStatus"), "s-err", "Valori di posizione non validi"); return; }
-    $("btnPrint").disabled = true;
-    send($("printStatus"), function () {
-      checkLabelStatus();
-      clearBuffer();
-      // model: 1 = Modello 2 · eccLevel 'L' · rotazione 0
-      drawQRCode(payload, x, y, 1, "L", size, 0);
-      printBuffer();
-    }, "Stampa");
-    setTimeout(function () { $("btnPrint").disabled = false; }, 2500);
-  };
+  // ---------- Avvio ----------
+  renderPayload();
+  renderSettings();
+  checkPrinter();
+  if ("serviceWorker" in navigator && location.protocol === "https:") {
+    navigator.serviceWorker.register("sw.js").catch(function () {});
+  }
 })();
 </script>
 </body>

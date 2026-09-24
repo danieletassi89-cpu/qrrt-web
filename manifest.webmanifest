@@ -1,0 +1,17 @@
+{
+  "name": "TASSIUFFICIO QR RT",
+  "short_name": "QR RT",
+  "description": "Scansione e ristampa dei QR dei registratori telematici su BIXOLON SLP-TX220B.",
+  "lang": "it",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#F4F9FF",
+  "theme_color": "#142348",
+  "icons": [
+    { "src": "icon-180.png", "sizes": "180x180", "type": "image/png" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
