@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>QR RT Web – prova</title>
+<meta name="theme-color" content="#142348">
+<!-- Librerie ufficiali BIXOLON Web Print SDK, servite pubblicamente da bixolon.com -->
+<script src="https://bixolon.com/common/WebPrintSDK/js/bxlcommon.js"></script>
+<script src="https://bixolon.com/common/WebPrintSDK/js/bxllabel.js"></script>
+<!-- Decodifica QR lato pagina -->
+<script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
+<style>
+  :root { --navy:#142348; --coral:#EB5B53; --canvas:#F4F9FF; --ink:#282E37; --ok:#1E9669; --warn:#C77700; --err:#C62828; }
+  * { box-sizing:border-box; }
+  body { margin:0; font:16px/1.4 -apple-system, system-ui, sans-serif; background:var(--canvas); color:var(--ink); }
+  main { max-width:520px; margin:0 auto; padding:16px 16px 40px; }
+  h1 { margin:4px 0 2px; color:var(--navy); font-size:28px; }
+  .brand { color:var(--coral); font-weight:700; font-size:12px; letter-spacing:1.2px; }
+  .card { background:#fff; border-radius:16px; padding:14px; margin-top:14px; }
+  .row { display:flex; gap:8px; align-items:center; }
+  .row > * { flex:1; }
+  label { font-size:13px; color:#555; display:block; margin-bottom:4px; }
+  input, select { width:100%; font-size:16px; padding:10px; border:1px solid #d5dbe6; border-radius:10px; background:#fff; }
+  button { width:100%; font-size:17px; font-weight:600; padding:14px; border:0; border-radius:14px; color:#fff; background:var(--navy); margin-top:10px; }
+  button.print { background:var(--coral); }
+  button.ghost { background:#e9eef7; color:var(--navy); }
+  button:disabled { opacity:.45; }
+  #video { width:100%; border-radius:12px; background:#000; display:none; margin-top:10px; }
+  #payload { font-family:ui-monospace, Menlo, monospace; font-size:13px; white-space:pre-wrap; word-break:break-all; background:#f3f5f9; border-radius:10px; padding:10px; min-height:44px; }
+  .status { padding:10px 12px; border-radius:12px; font-weight:600; font-size:14px; margin-top:10px; }
+  .s-info { background:#e8eefb; color:var(--navy); }
+  .s-ok { background:#e3f5ee; color:var(--ok); }
+  .s-warn { background:#fdf1dc; color:var(--warn); }
+  .s-err { background:#fbe5e5; color:var(--err); }
+  details { margin-top:14px; }
+  summary { font-weight:600; color:var(--navy); }
+  pre { font-size:12px; white-space:pre-wrap; word-break:break-all; background:#f3f5f9; border-radius:10px; padding:10px; }
+  .muted { color:#777; font-size:13px; }
+</style>
+</head>
+<body>
+<main>
+  <div class="brand">TASSIUFFICIO</div>
+  <h1>QR RT · prova web</h1>
+  <div class="muted">Pagina di prova per la stampa tramite l'app BIXOLON Web Print SDK.</div>
+
+  <div class="card">
+    <div class="row">
+      <div><label for="pname">Nome logico stampante</label><input id="pname" value="QRRT" autocapitalize="off" autocorrect="off"></div>
+      <div><label for="mode">Collegamento all'app</label>
+        <select id="mode"><option value="http:">HTTP</option><option value="https:">HTTPS</option><option value="ws:">WS</option><option value="wss:">WSS</option></select>
+      </div>
+    </div>
+    <button class="ghost" id="btnCheck">1 · Verifica collegamento stampante</button>
+    <div id="checkStatus" class="status s-info">Non ancora verificato</div>
+  </div>
+
+  <div class="card">
+    <button id="btnScan">2 · Scansiona QR con la fotocamera</button>
+    <video id="video" playsinline muted></video>
+    <label style="margin-top:10px">Oppure scegli una foto del QR</label>
+    <input type="file" id="photo" accept="image/*">
+    <label style="margin-top:10px" for="manual">Oppure incolla il contenuto</label>
+    <input id="manual" placeholder="contenuto del QR">
+    <label style="margin-top:10px">Contenuto acquisito (esatto)</label>
+    <div id="payload">—</div>
+    <div class="muted" id="payloadInfo"></div>
+    <div id="scanStatus" class="status s-info" style="display:none"></div>
+  </div>
+
+  <div class="card">
+    <div class="row">
+      <div><label for="x">Orizzontale (punti)</label><input id="x" type="number" value="115" inputmode="numeric"></div>
+      <div><label for="y">Verticale (punti)</label><input id="y" type="number" value="35" inputmode="numeric"></div>
+      <div><label for="size">Dimensione</label><input id="size" type="number" value="5" min="1" max="9" inputmode="numeric"></div>
+    </div>
+    <div class="muted">8 punti = 1 mm. Valori collaudati nell'app iPhone: 115 / 35 / 5, QR Modello 2, correzione L.</div>
+    <button class="print" id="btnPrint" disabled>3 · Stampa 1 etichetta</button>
+    <div id="printStatus" class="status s-info" style="display:none"></div>
+  </div>
+
+  <details>
+    <summary>Diagnostica</summary>
+    <pre id="diag"></pre>
+  </details>
+</main>
+
+<script>
+(function () {
+  var $ = function (id) { return document.getElementById(id); };
+  var payload = "";
+  var issueID = 1;
+  var stream = null, scanning = false;
+  var canvas = document.createElement("canvas");
+  var ctx = canvas.getContext("2d", { willReadFrequently: true });
+
+  function setStatus(el, cls, text) { el.style.display = "block"; el.className = "status " + cls; el.textContent = text; }
+  function log(line) { $("diag").textContent += line + "\n"; }
+
+  // Preferenze locali (solo comodità su questo dispositivo)
+  try {
+    ["pname", "mode", "x", "y", "size"].forEach(function (k) {
+      var v = localStorage.getItem("qrrt." + k); if (v !== null) $(k).value = v;
+      $(k).addEventListener("change", function () { try { localStorage.setItem("qrrt." + k, $(k).value); } catch (e) {} });
+    });
+  } catch (e) {}
+
+  log("User agent: " + navigator.userAgent);
+  log("Contesto sicuro: " + window.isSecureContext);
+  log("getUserMedia: " + !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia));
+  log("Librerie BIXOLON: " + (typeof requestPrint === "function" && typeof drawQRCode === "function" ? "caricate" : "NON caricate"));
+  log("jsQR: " + (typeof jsQR === "function" ? "caricato" : "NON caricato"));
+
+  function applyMode() { if (typeof setConnectionMode === "function") setConnectionMode($("mode").value); }
+
+  function describe(result) {
+    if (!result) return null;
+    if (/success/i.test(result)) return ["s-ok", "Stampante raggiunta: risposta \"" + result + "\""];
+    if (/Cannot connect/i.test(result)) return ["s-err", "L'app Web Print SDK non risponde. È aperta? Modalità di collegamento corretta?"];
+    if (/No printers/i.test(result)) return ["s-err", "Nessuna stampante con questo nome logico nell'app Web Print SDK."];
+    return ["s-warn", "Risposta: \"" + result + "\""];
+  }
+
+  function send(el, buildFn, label) {
+    if (typeof requestPrint !== "function") { setStatus(el, "s-err", "Librerie BIXOLON non caricate: serve connessione internet."); return; }
+    applyMode();
+    setLabelId(issueID++);
+    buildFn();
+    var data = getLabelData();
+    log(label + " → " + data);
+    setStatus(el, "s-info", "Invio in corso…");
+    requestPrint($("pname").value.trim(), data, function (result) {
+      log(label + " ← " + JSON.stringify(result));
+      var d = describe(result);
+      if (d) setStatus(el, d[0], d[1]);
+    });
+  }
+
+  $("btnCheck").onclick = function () {
+    // Solo controllo stato: nessuna etichetta viene stampata.
+    send($("checkStatus"), function () { checkLabelStatus(); }, "Verifica");
+  };
+
+  function accept(text, source) {
+    if (!text || !text.trim()) return;
+    payload = text; // conservato esattamente, senza trim
+    $("payload").textContent = payload;
+    $("payloadInfo").textContent = payload.length + " caratteri · fonte: " + source;
+    $("btnPrint").disabled = false;
+    setStatus($("scanStatus"), "s-ok", "QR acquisito");
+  }
+
+  function decode(imageSource, w, h) {
+    canvas.width = w; canvas.height = h;
+    ctx.drawImage(imageSource, 0, 0, w, h);
+    var img = ctx.getImageData(0, 0, w, h);
+    var code = jsQR(img.data, w, h, { inversionAttempts: "attemptBoth" });
+    if (!code) return null;
+    // Se i byte non sono UTF-8 valido jsQR li restituisce comunque in binaryData.
+    return code.data;
+  }
+
+  function stopScan() {
+    scanning = false;
+    if (stream) { stream.getTracks().forEach(function (t) { t.stop(); }); stream = null; }
+    $("video").style.display = "none";
+    $("btnScan").textContent = "2 · Scansiona QR con la fotocamera";
+  }
+
+  function tick() {
+    if (!scanning) return;
+    var v = $("video");
+    if (v.readyState === v.HAVE_ENOUGH_DATA && v.videoWidth) {
+      var scale = Math.min(1, 800 / v.videoWidth);
+      var text = decode(v, Math.round(v.videoWidth * scale), Math.round(v.videoHeight * scale));
+      if (text) { accept(text, "fotocamera"); stopScan(); if (navigator.vibrate) navigator.vibrate(80); return; }
+    }
+    requestAnimationFrame(tick);
+  }
+
+  $("btnScan").onclick = function () {
+    if (scanning) { stopScan(); return; }
+    if (typeof jsQR !== "function") { setStatus($("scanStatus"), "s-err", "Decodificatore QR non caricato: serve connessione internet."); return; }
+    if (!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia)) {
+      setStatus($("scanStatus"), "s-warn", "Fotocamera non disponibile in questa app: usa \"scegli una foto\".");
+      return;
+    }
+    navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" }, audio: false })
+      .then(function (s) {
+        stream = s; scanning = true;
+        var v = $("video"); v.srcObject = s; v.style.display = "block"; v.play();
+        $("btnScan").textContent = "Annulla scansione";
+        setStatus($("scanStatus"), "s-info", "Inquadra interamente il QR");
+        requestAnimationFrame(tick);
+      })
+      .catch(function (e) {
+        log("getUserMedia errore: " + e.name + " " + e.message);
+        setStatus($("scanStatus"), "s-warn", "Fotocamera non consentita qui (" + e.name + "): usa \"scegli una foto\".");
+      });
+  };
+
+  $("photo").onchange = function (ev) {
+    var f = ev.target.files && ev.target.files[0]; if (!f) return;
+    var img = new Image();
+    img.onload = function () {
+      var scale = Math.min(1, 1600 / Math.max(img.width, img.height));
+      var text = decode(img, Math.round(img.width * scale), Math.round(img.height * scale));
+      URL.revokeObjectURL(img.src);
+      if (text) accept(text, "foto"); else setStatus($("scanStatus"), "s-warn", "Nessun QR riconosciuto nella foto.");
+    };
+    img.src = URL.createObjectURL(f);
+  };
+
+  $("manual").onchange = function () { accept($("manual").value, "testo"); };
+
+  $("btnPrint").onclick = function () {
+    if (!payload) return;
+    var x = parseInt($("x").value, 10), y = parseInt($("y").value, 10), size = parseInt($("size").value, 10);
+    if ([x, y, size].some(isNaN)) { setStatus($("printStatus"), "s-err", "Valori di posizione non validi"); return; }
+    $("btnPrint").disabled = true;
+    send($("printStatus"), function () {
+      checkLabelStatus();
+      clearBuffer();
+      // model: 1 = Modello 2 · eccLevel 'L' · rotazione 0
+      drawQRCode(payload, x, y, 1, "L", size, 0);
+      printBuffer();
+    }, "Stampa");
+    setTimeout(function () { $("btnPrint").disabled = false; }, 2500);
+  };
+})();
+</script>
+</body>
+</html>
