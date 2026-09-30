@@ -1,0 +1,26 @@
+{
+  "_nota": "Collega i nomi delle colonne dell'esportazione OD+ (da verificare sul file reale) ai campi normalizzati. Lascia vuoto ('') un campo non presente nel file: l'importatore non inventa valori.",
+  "separatore": ";",
+  "separatore_decimale": ",",
+  "codifica": "utf-8-sig",
+  "valuta_predefinita": "",
+  "colonne": {
+    "codice_od": "",
+    "ean": "",
+    "cod_produttore": "",
+    "nome": "",
+    "descrizione": "",
+    "marca": "",
+    "categoria": "",
+    "immagine_url": "",
+    "prezzo_acquisto_netto": "",
+    "valuta": "",
+    "iva_pct": "",
+    "unita_vendita": "",
+    "pezzi_per_confezione": "",
+    "qta_minima": "",
+    "giacenza": "",
+    "tempo_approvvigionamento": "",
+    "data_aggiornamento": ""
+  }
+}

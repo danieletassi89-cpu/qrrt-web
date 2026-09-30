@@ -1,0 +1,18 @@
+# Profilo browser (contiene sessione e cookie): mai versionarlo
+.browser-profile/
+
+# Credenziali
+.env
+*.env
+
+# Dati scaricati dal portale del fornitore: restano in locale
+dati/originali/*
+!dati/originali/.gitkeep
+
+# Log di rete (potrebbero contenere dati sensibili anche se oscurati)
+*.har
+log_rete/
+
+__pycache__/
+*.pyc
+.venv/
