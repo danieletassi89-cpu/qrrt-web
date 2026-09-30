@@ -59,12 +59,26 @@ Fonti da consultare: [AdE – Laboratori e tecnici abilitati](https://www.agenzi
 Per ogni sezione: **scopo**, **elenco/colonne**, **campi del dettaglio**, **azioni**, **input → elaborazione → output**, **stati**, **pro/contro operativi**, **idea per TASSIUFFICIO**.
 
 ### 3.1 Dashboard
+*Fonte: screenshot del 30/09/2026 (utente loggato come laboratorio).*
+
 | Voce | Annotazioni |
 |---|---|
-| Riquadri/contatori | ⚪ scadute, in scadenza, fatte nel mese |
-| Clic su un contatore → | ⚪ lista filtrata |
-| Utilità reale per il tecnico | |
-| Cosa manca / cosa è superfluo | |
+| Intestazione | ✅ Saluto con nome del laboratorio · pulsante **"Subscribe to Push Messaging"** (notifiche push del browser) |
+| Barra superiore | ✅ **Ricerca globale** con icona fotocamera (🟡 probabile ricerca/scansione da immagine o QR) · icona **WhatsApp** · icona **calendario** · **campanella notifiche** · profilo utente |
+| Menu laterale | ✅ 7 icone senza testo (in ordine: dashboard, **+** nuovo, grafici/report, megafono/comunicazioni, carrello, impostazioni, libro/manuale). Etichette da verificare passandoci sopra |
+| Riquadro **Clienti** | ✅ 490 |
+| Riquadro **Installazioni** | ✅ 490 — 🟡 "installazione" = RT installato presso il cliente (rapporto 1:1 con i clienti in questo archivio) |
+| Riquadro **Verifiche periodiche** | ✅ *VP in scadenza 0* · *VP scadute 0* — ⚠️ valori sospetti con 490 installazioni: 🟡 la scadenza forse non è calcolata per tutti gli RT (date mancanti?) oppure la finestra "in scadenza" è breve. **Da capire cliccando** |
+| Riquadro **Interventi** | ✅ 59 negli ultimi 30 giorni |
+| Riquadro **Scadenzario MPDD** | ✅ *MPDD in esaurimento 0* · *MPDD esaurite 9* — 🟡 monitoraggio della **memoria permanente di dettaglio** degli RT (l'equivalente moderno degli "azzeramenti" del vecchio programma) |
+| Riquadro **Allarmi invii** | ✅ 60 — 🟡 RT con **problemi di trasmissione dei corrispettivi**. Funzione di valore che il vecchio programma non aveva. Da capire **da dove arrivano i dati** (lettura dall'RT? dal portale AdE? import?) |
+| Riquadro **Stato MPDR** | ✅ *In esaurimento 18* · *Esaurite 1* — 🟡 memoria permanente di riepilogo |
+| Agenda | ✅ Calendario settimanale (27 set – 3 ott 2026) con frecce, viste **Giorno** / **Lista**, "No events" |
+| Clic su un contatore → | ⚪ lista filtrata (da verificare) |
+
+**Prime considerazioni per il confronto:**
+- FiscalWeb21 non si limita alle verifiche: fa anche **monitoraggio dello stato dell'RT** (memorie MPDD/MPDR, allarmi di trasmissione). È una funzione da valutare per il nuovo modulo (lotto dedicato), **ma prima bisogna capire l'origine dei dati**: se dipende da un collegamento con gli RT o con i servizi AdE che solo FiscalWeb21 ha, replicarla può non essere banale.
+- La dashboard è compatta (7 riquadri + agenda), vicina all'impostazione proposta per TASSIUFFICIO. Però mescola indicatori in inglese e in italiano, le icone del menu non hanno etichette, e un contatore VP a 0 su 490 RT ne mette in dubbio l'affidabilità.
 
 ### 3.2 Clienti
 | Voce | Annotazioni |
